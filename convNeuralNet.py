@@ -6,7 +6,7 @@ import tensorflow as tf
 mnist = input_data.read_data_sets("MNIST_data", one_hot=True)
 
 #
-# Setup W*x + b = y and the optimizing value:  cross-entropy
+# Setup W*x + b = y and the expression to optimize:  cross-entropy
 #
 x = tf.placeholder(tf.float32, shape=[None, 784], name="x")
 y_ = tf.placeholder(tf.float32, shape=[None, 10], name="y_")
