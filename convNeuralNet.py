@@ -17,6 +17,12 @@ def bias_variable(shape):
     return tf.Variable(initial)
 
 
+def conv2d(x, W):
+    return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
+
+def max_pool_2x2(x):
+    return tf.nn.max_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+
 # Read in mnist data from official mnist source
 mnist = input_data.read_data_sets("MNIST_data", one_hot=True)
 
