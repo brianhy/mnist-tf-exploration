@@ -39,9 +39,6 @@ y_ = tf.placeholder(tf.float32, shape=[None, 10], name="y_")
 W = tf.Variable(tf.zeros([784, 10]), name="W")
 b = tf.Variable(tf.zeros([10]), name="b")
 
-y = tf.nn.softmax(tf.matmul(x, W) + b, name="softmax")
-cross_entropy = tf.reduce_mean(-tf.reduce_sum(y_ * tf.log(y), reduction_indices=[1]))
-
 x_image = tf.reshape(x, [-1,28,28,1])
 h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
 h_pool1 = max_pool_2x2(h_conv1)
@@ -82,27 +79,3 @@ for i in range(50):
     sess.run(train_step, feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
 
 print("test accuracy %g"%sess.run(accuracy, feed_dict={x: mnist.test.images, y_: mnist.test.labels, keep_prob: 1.0}))
-
-
-# We'll use gradient descent with learning rate of .5
-# train_step = tf.train.GradientDescentOptimizer(0.5).minimize(cross_entropy)
-
-#
-# Alright, now it's time to train.
-# Let's init all variables, then get to training
-# pieces of the training set.
-#
-# sess = tf.Session()
-# sess.run(tf.initialize_all_variables())
-
-# for i in range(1000):
-#     print(i)
-#     batch = mnist.train.next_batch(50)
-#     dictFeed = {x: batch[0], y_:batch[1]}
-
-#     sess.run(train_step, feed_dict=dictFeed)
-
-#     correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
-#     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-#     dictFeed = feed_dict={x: mnist.test.images, y_: mnist.test.labels}
-#     print(sess.run(accuracy, feed_dict=dictFeed))
