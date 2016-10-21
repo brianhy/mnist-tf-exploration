@@ -2,6 +2,21 @@ from tensorflow.examples.tutorials.mnist import input_data
 
 import tensorflow as tf
 
+
+# Create a tf weight variable with a small amount of noise.
+# Truncated normal is truncated at 2 std deviations.
+# Default mean is 0.0
+def weight_variable(shape):
+    initial = tf.truncated_normal(shape, stddev=0.1)
+    return tf.Variable(initial)
+
+
+# Create a bias with slightly positive lean.
+def bias_variable(shape):
+    initial = tf.constant(0.1, shape=shape)
+    return tf.Variable(initial)
+
+
 # Read in mnist data from official mnist source
 mnist = input_data.read_data_sets("MNIST_data", one_hot=True)
 
