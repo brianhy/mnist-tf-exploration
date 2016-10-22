@@ -24,6 +24,11 @@ def max_pool_2x2(x):
     return tf.nn.max_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
 
+# Here's is where all the tensorflow logs will go.
+# For example, things like graph viz and learning information
+# will be dumped here
+logs_path = "/tmp/tensorflow_logs/mnistConvol"
+
 W_conv1 = weight_variable([5, 5, 1, 32])
 b_conv1 = bias_variable([32])
 
@@ -71,6 +76,10 @@ accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
 sess = tf.Session()
 sess.run(tf.initialize_all_variables())
+
+# Setup a summary writer so we can visualize the learning process
+summary_writer = tf.train.SummaryWriter(logs_path, graph=tf.get_default_graph())
+
 for i in range(50):
     batch = mnist.train.next_batch(50)
     if i%10 == 0:
