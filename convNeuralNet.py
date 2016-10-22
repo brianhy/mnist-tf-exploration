@@ -78,4 +78,5 @@ for i in range(50):
         print("step %d, training accuracy %g"%(i, train_accuracy))
     sess.run(train_step, feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
 
-print("test accuracy %g"%sess.run(accuracy, feed_dict={x: mnist.test.images, y_: mnist.test.labels, keep_prob: 1.0}))
+iTestSetLim = min(2000, len(mnist.test.images))
+print("test accuracy %g"%sess.run(accuracy, feed_dict={x: mnist.test.images[0:iTestSetLim], y_: mnist.test.labels[0:iTestSetLim], keep_prob: 1.0}))
