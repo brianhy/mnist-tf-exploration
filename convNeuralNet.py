@@ -1,7 +1,9 @@
+import sys
+import time
+
 from tensorflow.examples.tutorials.mnist import input_data
 
 import tensorflow as tf
-
 
 # Create a tf weight variable with a small amount of noise.
 # Truncated normal is truncated at 2 std deviations.
@@ -23,14 +25,20 @@ def conv2d(x, W):
 def max_pool_2x2(x):
     return tf.nn.max_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
+def MsecNow():
+    return int(round(time.time() * 1000))
 
+msecStart = MsecNow()
+
+fPrintPeriodicEval = False
+if (len(sys.argv) > 1):
+    if (sys.argv[1] == "--ppe"):
+        fPrintPeriodicEval = True
 # Here's is where all the tensorflow logs will go.
 # For example, things like graph viz and learning information
 # will be dumped here
 logs_path = "/tmp/tensorflow_logs/mnistConvol"
 
-W_conv1 = weight_variable([5, 5, 1, 32])
-b_conv1 = bias_variable([32])
 
 # Read in mnist data from official mnist source
 mnist = input_data.read_data_sets("MNIST_data", one_hot=True)
@@ -44,10 +52,15 @@ y_ = tf.placeholder(tf.float32, shape=[None, 10], name="y_")
 W = tf.Variable(tf.zeros([784, 10]), name="W")
 b = tf.Variable(tf.zeros([10]), name="b")
 
+# First convoluational vars
 x_image = tf.reshape(x, [-1, 28, 28, 1])
+W_conv1 = weight_variable([5, 5, 1, 32])
+b_conv1 = bias_variable([32])
+
 h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
 h_pool1 = max_pool_2x2(h_conv1)
 
+# Second convolutional vars
 W_conv2 = weight_variable([5, 5, 32, 64])
 b_conv2 = bias_variable([64])
 
@@ -73,7 +86,9 @@ train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
 correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(y_, 1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
-
+#
+# Now, it's time to create session and train things.
+#
 sess = tf.Session()
 sess.run(tf.initialize_all_variables())
 
@@ -82,10 +97,15 @@ summary_writer = tf.train.SummaryWriter(logs_path, graph=tf.get_default_graph())
 
 for i in range(50):
     batch = mnist.train.next_batch(50)
-    if i % 10 == 0:
-        train_accuracy = sess.run(accuracy, feed_dict={x:batch[0], y_: batch[1], keep_prob: 1.0})
-        print("step %d, training accuracy %g"%(i, train_accuracy))
+    if (i % 10 == 0):
+        if (fPrintPeriodicEval):
+            train_accuracy = sess.run(accuracy, feed_dict={x:batch[0], y_: batch[1], keep_prob: 1.0})
+            print("step %d, training accuracy %g"%(i, train_accuracy))
+        else:
+            print("step {0}".format(i))
     sess.run(train_step, feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
 
 iTestSetLim = min(2000, len(mnist.test.images))
 print("test accuracy %g"%sess.run(accuracy, feed_dict={x: mnist.test.images[0:iTestSetLim], y_: mnist.test.labels[0:iTestSetLim], keep_prob: 1.0}))
+
+print("Total Elapsed Time:  {0} msec".format(MsecNow() - msecStart))
