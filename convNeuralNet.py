@@ -30,11 +30,7 @@ def MsecNow():
 
 msecStart = MsecNow()
 
-fPrintPeriodicEval = False
-if (len(sys.argv) > 1):
-    if (sys.argv[1] == "--ppe"):
-        fPrintPeriodicEval = True
-# Here's is where all the tensorflow logs will go.
+# Here's where all the tensorflow logs will go.
 # For example, things like graph viz and learning information
 # will be dumped here
 logs_path = "/tmp/tensorflow_logs/mnistConvol"
@@ -86,8 +82,9 @@ tf.scalar_summary("x-entr", cross_entropy)
 
 train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
 correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(y_, 1))
-accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
+accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+tf.scalar_summary("trn-accuracy", accuracy)
 #
 # Now, it's time to create session and train things.
 #
@@ -100,13 +97,10 @@ summary_writer = tf.train.SummaryWriter(logs_path, graph=tf.get_default_graph())
 
 for i in range(50):
     batch = mnist.train.next_batch(50)
-    if (i % 10 == 0):
-        if (fPrintPeriodicEval):
-            train_accuracy = sess.run(accuracy, feed_dict={x:batch[0], y_: batch[1], keep_prob: 1.0})
-            print("step %d, training accuracy %g"%(i, train_accuracy))
-        else:
-            print("step {0}".format(i))
-    summary, _ = sess.run([mrg_summary, train_step], feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
+    if ((i % 10) == 0):
+        print("step %d"%(i))
+    sess.run(train_step, feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
+    train_accuracy, summary = sess.run([accuracy, mrg_summary], feed_dict={x:batch[0], y_: batch[1], keep_prob: 1.0})
     summary_writer.add_summary(summary, i)
 
 iTestSetLim = min(2000, len(mnist.test.images))
