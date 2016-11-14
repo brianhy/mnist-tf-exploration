@@ -82,6 +82,8 @@ b_fc2 = bias_variable([10])
 y_conv=tf.nn.softmax(tf.matmul(h_fc1_drop, W_fc2) + b_fc2)
 
 cross_entropy = tf.reduce_mean(-tf.reduce_sum(y_ * tf.log(y_conv), reduction_indices=[1]))
+tf.scalar_summary("x-entr", cross_entropy)
+
 train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
 correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(y_, 1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
@@ -93,6 +95,7 @@ sess = tf.Session()
 sess.run(tf.initialize_all_variables())
 
 # Setup a summary writer so we can visualize the learning process
+mrg_summary = tf.merge_all_summaries() # Get tensor that represents all summaries to make eval easier
 summary_writer = tf.train.SummaryWriter(logs_path, graph=tf.get_default_graph())
 
 for i in range(50):
@@ -103,7 +106,8 @@ for i in range(50):
             print("step %d, training accuracy %g"%(i, train_accuracy))
         else:
             print("step {0}".format(i))
-    sess.run(train_step, feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
+    summary, _ = sess.run([mrg_summary, train_step], feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
+    summary_writer.add_summary(summary, i)
 
 iTestSetLim = min(2000, len(mnist.test.images))
 print("test accuracy %g"%sess.run(accuracy, feed_dict={x: mnist.test.images[0:iTestSetLim], y_: mnist.test.labels[0:iTestSetLim], keep_prob: 1.0}))
