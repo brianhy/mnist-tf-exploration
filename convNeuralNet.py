@@ -84,7 +84,7 @@ train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
 correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(y_, 1))
 
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-tf.scalar_summary("trn-accuracy", accuracy)
+tf.scalar_summary("accuracy", accuracy)
 #
 # Now, it's time to create session and train things.
 #
@@ -93,17 +93,23 @@ sess.run(tf.initialize_all_variables())
 
 # Setup a summary writer so we can visualize the learning process
 mrg_summary = tf.merge_all_summaries() # Get tensor that represents all summaries to make eval easier
-summary_writer = tf.train.SummaryWriter(logs_path, graph=tf.get_default_graph())
+train_summary_writer = tf.train.SummaryWriter(logs_path + "/train", graph=tf.get_default_graph())
+test_summary_writer = tf.train.SummaryWriter(logs_path + "/test", graph=tf.get_default_graph())
 
-for i in range(50):
-    batch = mnist.train.next_batch(50)
+# Setup test set
+iTestSetLim = min(10, len(mnist.test.images))
+dictTestData = {x: mnist.test.images[0:iTestSetLim], y_: mnist.test.labels[0:iTestSetLim], keep_prob: 1.0}
+
+for i in range(300):
+    batch = mnist.train.next_batch(10)
     if ((i % 10) == 0):
         print("step %d"%(i))
     sess.run(train_step, feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
-    train_accuracy, summary = sess.run([accuracy, mrg_summary], feed_dict={x:batch[0], y_: batch[1], keep_prob: 1.0})
-    summary_writer.add_summary(summary, i)
+    train_summary = sess.run(mrg_summary, feed_dict={x:batch[0], y_: batch[1], keep_prob: 1.0})
+    train_summary_writer.add_summary(train_summary, i)
+    test_summary = sess.run(mrg_summary, feed_dict=dictTestData)
+    test_summary_writer.add_summary(test_summary, i)
 
-iTestSetLim = min(2000, len(mnist.test.images))
-print("test accuracy %g"%sess.run(accuracy, feed_dict={x: mnist.test.images[0:iTestSetLim], y_: mnist.test.labels[0:iTestSetLim], keep_prob: 1.0}))
+print("test accuracy %g"%sess.run(accuracy, feed_dict=dictTestData))
 
 print("Total Elapsed Time:  {0} msec".format(MsecNow() - msecStart))
