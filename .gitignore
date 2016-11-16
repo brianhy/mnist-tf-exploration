@@ -1,0 +1,7 @@
+# Ignore VIM files
+*.swp
+*.swo
+*~
+
+# Ignore MNIST data files
+MNIST_data/**/*
