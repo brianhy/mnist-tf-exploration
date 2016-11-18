@@ -2,6 +2,7 @@ import sys
 import time
 
 from tensorflow.examples.tutorials.mnist import input_data
+import argparse as argp
 
 import tensorflow as tf
 
@@ -20,13 +21,36 @@ def bias_variable(shape, name=""):
 def MsecNow():
     return int(round(time.time() * 1000))
 
+def ParseCmdLine():
+    parser = argp.ArgumentParser(description="Learn hand-written digits using Sigmoid network")
+    parser.add_argument("-r", "--learningRate", default=1.0, type=float, dest="fltLrnRate",
+			help="Learning Rate for Gradient Descent [Def - %(default)s]", metavar="LrnRate")
+    parser.add_argument("-e", "--epochs", default=1000, type=int, dest="cEpochs",
+			help="Number of epochs to train [Def - %(default)s]", metavar="[No. Epochs]")
+    parser.add_argument("--log", default="/tmp/tensorflow_logs/mnistConvol", dest="strLogFolder",
+			help="Folder where to put logs for tensorboard [Def - %(default)s]", metavar="[Log Folder Path]")
+    parser.add_argument("-m", "--miniBatchSize", default="100", type=int, dest="citemsBatch",
+			help="Number of items to run per epoch [Def - %(default)s]", metavar="[mini batch size]")
+    parser.add_argument("-n", default=30, type=int, dest="cNeuronsHiddenLyr",
+			help="Number of neurons to put in the hidden layer [Def - %(default)s]", metavar="N")
+    parser.add_argument("--l2", default=0.0, type=float, dest="fltL2RegParam",
+			help="L2 Regularization Parameter, 0 => no L2 regularization [Def - %(default)s]", metavar="[L2 Reg Param]")
+
+    return parser.parse_args()
+
 msecStart = MsecNow()
+
+options = ParseCmdLine()
+fltLrnRate = options.fltLrnRate
+cEpochs = options.cEpochs
+citemsBatch = options.citemsBatch
+cNeuronsLyr2 = options.cNeuronsHiddenLyr
+fltL2RegParam = options.fltL2RegParam
 
 # Here's where all the tensorflow logs will go.
 # For example, things like graph viz and learning information
 # will be dumped here
-logs_path = "/tmp/tensorflow_logs/mnistConvol"
-
+strLogFolder = options.strLogFolder
 
 # Read in mnist data from official mnist source
 mnist = input_data.read_data_sets("MNIST_data", one_hot=True)
@@ -39,7 +63,6 @@ y_ = tf.placeholder(tf.float32, shape=[None, 10], name="y_")
 
 
 # Second Layer (first hidden layer)
-cNeuronsLyr2 = 30
 lyr2_W = weight_variable([784, cNeuronsLyr2], name="lyr2_W")
 lyr2_b = bias_variable([cNeuronsLyr2], name="lyr2_b")
 
@@ -62,14 +85,13 @@ cross_entropy = -tf.reduce_sum(y_ * tf.log(output) + (1 - y_) * tf.log(1 - outpu
 # We're going to add in some L2 regularization across the weights in our layers.
 # This will be Lambda/N * Sum(w^2, across all weights) - where N is items in the
 # mini-batch.
-lambda_L2_reg = 0.0004 
-L2_reg = lambda_L2_reg * (tf.nn.l2_loss(lyr2_W) + tf.nn.l2_loss(lyr3_W))
+L2_reg = fltL2RegParam * (tf.nn.l2_loss(lyr2_W) + tf.nn.l2_loss(lyr3_W))
 tf.scalar_summary("L2_reg", L2_reg)
 
 cost = tf.reduce_mean(cross_entropy + L2_reg) # Here's where we divide cost by N (# items in mini-batch)
 tf.scalar_summary("cost", cost)
 
-train_step = tf.train.GradientDescentOptimizer(1).minimize(cost)
+train_step = tf.train.GradientDescentOptimizer(fltLrnRate).minimize(cost)
 correct_prediction = tf.equal(tf.argmax(output, 1), tf.argmax(y_, 1))
 
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
@@ -82,16 +104,15 @@ sess.run(tf.initialize_all_variables())
 
 # Setup a summary writer so we can visualize the learning process
 mrg_summary = tf.merge_all_summaries() # Get tensor that represents all summaries to make eval easier
-train_summary_writer = tf.train.SummaryWriter(logs_path + "/train", graph=tf.get_default_graph())
-test_summary_writer = tf.train.SummaryWriter(logs_path + "/test", graph=tf.get_default_graph())
+train_summary_writer = tf.train.SummaryWriter(strLogFolder + "/train", graph=tf.get_default_graph())
+test_summary_writer = tf.train.SummaryWriter(strLogFolder + "/test", graph=tf.get_default_graph())
 
 # Setup test set
-citemsInSet = 100
-iTestSetLim = min(citemsInSet, len(mnist.test.images))
+iTestSetLim = min(citemsBatch, len(mnist.test.images))
 dictTestData = {x: mnist.test.images[0:iTestSetLim], y_: mnist.test.labels[0:iTestSetLim]}
 
-for i in range(100):
-    batch = mnist.train.next_batch(citemsInSet)
+for i in range(cEpochs):
+    batch = mnist.train.next_batch(citemsBatch)
     if ((i % 10) == 0):
         print("step {}".format(i))
     sess.run(train_step, feed_dict={x: batch[0], y_: batch[1]})
