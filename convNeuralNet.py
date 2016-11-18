@@ -30,16 +30,16 @@ class SigmoidMnistNeuralNet(object):
                     cNeuronsHiddenLryIn=30,
                     fltL2RegParamIn=0.0,
                     strLogFolderIn="/tmp/tensorflow_logs/mnistConvol"):
-        fltLrnRate = fltLrnRateIn
-        cEpochs = cEpochsIn
-        citemsBatch = citemsBatchIn
-        cNeuronsLyr2 = cNeuronsHiddenLryIn
-        fltL2RegParam = fltL2RegParamIn
+        self.m_fltLrnRate = fltLrnRateIn
+        self.m_cEpochs = cEpochsIn
+        self.m_citemsBatch = citemsBatchIn
+        self.m_cNeuronsLyr2 = cNeuronsHiddenLryIn
+        self.m_fltL2RegParam = fltL2RegParamIn
 
         # Here's where all the tensorflow logs will go.
         # For example, things like graph viz and learning information
         # will be dumped hereIn
-        strLogFolder = strLogFolderIn
+        self.m_strLogFolder = strLogFolderIn
 
     def Train(self):
         # Read in mnist data from official mnist source
@@ -53,13 +53,13 @@ class SigmoidMnistNeuralNet(object):
 
 
         # Second Layer (first hidden layer)
-        lyr2_W = weight_variable([784, cNeuronsLyr2], name="lyr2_W")
-        lyr2_b = bias_variable([cNeuronsLyr2], name="lyr2_b")
+        lyr2_W = weight_variable([784, self.m_cNeuronsLyr2], name="lyr2_W")
+        lyr2_b = bias_variable([self.m_cNeuronsLyr2], name="lyr2_b")
 
         lyr2_Activation = tf.nn.sigmoid(tf.matmul(x, lyr2_W) + lyr2_b)
 
         # Third Layer (Output Layer)
-        lyr3_W = weight_variable([cNeuronsLyr2, 10], name="lyr3_W")
+        lyr3_W = weight_variable([self.m_cNeuronsLyr2, 10], name="lyr3_W")
         lyr3_b = bias_variable([10], name="lyr3_b")
 
         output = tf.nn.sigmoid(tf.matmul(lyr2_Activation, lyr3_W) + lyr3_b)
@@ -75,13 +75,13 @@ class SigmoidMnistNeuralNet(object):
         # We're going to add in some L2 regularization across the weights in our layers.
         # This will be Lambda/N * Sum(w^2, across all weights) - where N is items in the
         # mini-batch.
-        L2_reg = fltL2RegParam * (tf.nn.l2_loss(lyr2_W) + tf.nn.l2_loss(lyr3_W))
+        L2_reg = self.m_fltL2RegParam * (tf.nn.l2_loss(lyr2_W) + tf.nn.l2_loss(lyr3_W))
         tf.scalar_summary("L2_reg", L2_reg)
 
         cost = tf.reduce_mean(cross_entropy + L2_reg) # Here's where we divide cost by N (# items in mini-batch)
         tf.scalar_summary("cost", cost)
 
-        train_step = tf.train.GradientDescentOptimizer(fltLrnRate).minimize(cost)
+        train_step = tf.train.GradientDescentOptimizer(self.m_fltLrnRate).minimize(cost)
         correct_prediction = tf.equal(tf.argmax(output, 1), tf.argmax(y_, 1))
 
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
@@ -94,14 +94,14 @@ class SigmoidMnistNeuralNet(object):
 
         # Setup a summary writer so we can visualize the learning process
         mrg_summary = tf.merge_all_summaries() # Get tensor that represents all summaries to make eval easier
-        train_summary_writer = tf.train.SummaryWriter(strLogFolder + "/train", graph=tf.get_default_graph())
-        test_summary_writer = tf.train.SummaryWriter(strLogFolder + "/test", graph=tf.get_default_graph())
+        train_summary_writer = tf.train.SummaryWriter(self.m_strLogFolder + "/train", graph=tf.get_default_graph())
+        test_summary_writer = tf.train.SummaryWriter(self.m_strLogFolder + "/test", graph=tf.get_default_graph())
 
         # Setup test set
-        dictTestData = {x: mnist.test.images[0:citemsBatch], y_: mnist.test.labels[0:citemsBatch]}
+        dictTestData = {x: mnist.test.images[0:self.m_citemsBatch], y_: mnist.test.labels[0:self.m_citemsBatch]}
 
-        for i in range(cEpochs):
-            batch = mnist.train.next_batch(citemsBatch)
+        for i in range(self.m_cEpochs):
+            batch = mnist.train.next_batch(self.m_citemsBatch)
             if ((i % 10) == 0):
                 print("step {}".format(i))
             sess.run(train_step, feed_dict={x: batch[0], y_: batch[1]})
