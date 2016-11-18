@@ -57,10 +57,19 @@ output = tf.nn.sigmoid(tf.matmul(lyr2_Activation, lyr3_W) + lyr3_b)
 # distribution.  Hence, we interpret each neuron as a Bernoulli distribution (0 or 1)
 # with output telling us probability of a single neuron in output is a 1.  Doing so
 # makes the cross-entropy optimization behave.
-cross_entropy = tf.reduce_mean(-tf.reduce_sum(y_ * tf.log(output) + (1 - y_) * tf.log(1 - output), reduction_indices=[1]))
-tf.scalar_summary("x-entr", cross_entropy)
+cross_entropy = -tf.reduce_sum(y_ * tf.log(output) + (1 - y_) * tf.log(1 - output), reduction_indices=[1])
 
-train_step = tf.train.GradientDescentOptimizer(1).minimize(cross_entropy)
+# We're going to add in some L2 regularization across the weights in our layers.
+# This will be Lambda/N * Sum(w^2, across all weights) - where N is items in the
+# mini-batch.
+lambda_L2_reg = 0.0004 
+L2_reg = lambda_L2_reg * (tf.nn.l2_loss(lyr2_W) + tf.nn.l2_loss(lyr3_W))
+tf.scalar_summary("L2_reg", L2_reg)
+
+cost = tf.reduce_mean(cross_entropy + L2_reg) # Here's where we divide cost by N (# items in mini-batch)
+tf.scalar_summary("cost", cost)
+
+train_step = tf.train.GradientDescentOptimizer(1).minimize(cost)
 correct_prediction = tf.equal(tf.argmax(output, 1), tf.argmax(y_, 1))
 
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
@@ -91,6 +100,6 @@ for i in range(100):
     test_summary = sess.run(mrg_summary, feed_dict=dictTestData)
     test_summary_writer.add_summary(test_summary, i)
 
-print("test accuracy %g"%sess.run(accuracy, feed_dict=dictTestData))
+print("test accuracy - {0:.5f}".format(sess.run(accuracy, feed_dict=dictTestData)))
 
 print("Total Elapsed Time:  {0} msec".format(MsecNow() - msecStart))
