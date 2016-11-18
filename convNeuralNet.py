@@ -93,7 +93,7 @@ dictTestData = {x: mnist.test.images[0:iTestSetLim], y_: mnist.test.labels[0:iTe
 for i in range(100):
     batch = mnist.train.next_batch(citemsInSet)
     if ((i % 10) == 0):
-        print("step %d"%(i))
+        print("step {}".format(i))
     sess.run(train_step, feed_dict={x: batch[0], y_: batch[1]})
     train_summary = sess.run(mrg_summary, feed_dict={x: batch[0], y_: batch[1]})
     train_summary_writer.add_summary(train_summary, i)
