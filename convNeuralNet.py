@@ -22,18 +22,24 @@ def MsecNow():
     return int(round(time.time() * 1000))
 
 class SigmoidMnistNeuralNet(object):
+    s_fltLrnRate=1.0
+    s_cEpochs=1000
+    s_citemsBatch=100
+    s_cNeuronsHiddenLyr=30
+    s_fltL2RegParam=0.0
+    s_strLogFolder="/tmp/tensorflow_logs/mnistConvol"
 
     def __init__(self,
-                    fltLrnRateIn=1.0,
-                    cEpochsIn=1000,
-                    citemsBatchIn=100,
-                    cNeuronsHiddenLryIn=30,
-                    fltL2RegParamIn=0.0,
-                    strLogFolderIn="/tmp/tensorflow_logs/mnistConvol"):
+                    fltLrnRateIn=s_fltLrnRate,
+                    cEpochsIn=s_cEpochs,
+                    citemsBatchIn=s_citemsBatch,
+                    cNeuronsHiddenLyrIn=s_cNeuronsHiddenLyr,
+                    fltL2RegParamIn=s_fltL2RegParam,
+                    strLogFolderIn=s_strLogFolder):
         self.m_fltLrnRate = fltLrnRateIn
         self.m_cEpochs = cEpochsIn
         self.m_citemsBatch = citemsBatchIn
-        self.m_cNeuronsLyr2 = cNeuronsHiddenLryIn
+        self.m_cNeuronsLyr2 = cNeuronsHiddenLyrIn
         self.m_fltL2RegParam = fltL2RegParamIn
 
         # Here's where all the tensorflow logs will go.
@@ -114,17 +120,17 @@ class SigmoidMnistNeuralNet(object):
 
 def ParseCmdLine():
     parser = argp.ArgumentParser(description="Learn hand-written digits using Sigmoid network")
-    parser.add_argument("-r", "--learningRate", default=1.0, type=float, dest="fltLrnRate",
+    parser.add_argument("-r", "--learningRate", default=SigmoidMnistNeuralNet.s_fltLrnRate, type=float, dest="fltLrnRate",
 			help="Learning Rate for Gradient Descent [Def - %(default)s]", metavar="LrnRate")
-    parser.add_argument("-e", "--epochs", default=1000, type=int, dest="cEpochs",
+    parser.add_argument("-e", "--epochs", default=SigmoidMnistNeuralNet.s_cEpochs, type=int, dest="cEpochs",
 			help="Number of epochs to train [Def - %(default)s]", metavar="[No. Epochs]")
-    parser.add_argument("--log", default="/tmp/tensorflow_logs/mnistConvol", dest="strLogFolder",
+    parser.add_argument("--log", default=SigmoidMnistNeuralNet.s_strLogFolder, dest="strLogFolder",
 			help="Folder where to put logs for tensorboard [Def - %(default)s]", metavar="[Log Folder Path]")
-    parser.add_argument("-m", "--miniBatchSize", default="100", type=int, dest="citemsBatch",
+    parser.add_argument("-m", "--miniBatchSize", default=SigmoidMnistNeuralNet.s_citemsBatch, type=int, dest="citemsBatch",
 			help="Number of items to run per epoch [Def - %(default)s]", metavar="[mini batch size]")
-    parser.add_argument("-n", default=30, type=int, dest="cNeuronsHiddenLyr",
+    parser.add_argument("-n", default=SigmoidMnistNeuralNet.s_cNeuronsHiddenLyr, type=int, dest="cNeuronsHiddenLyr",
 			help="Number of neurons to put in the hidden layer [Def - %(default)s]", metavar="N")
-    parser.add_argument("--l2", default=0.0, type=float, dest="fltL2RegParam",
+    parser.add_argument("--l2", default=SigmoidMnistNeuralNet.s_fltL2RegParam, type=float, dest="fltL2RegParam",
 			help="L2 Regularization Parameter, 0 => no L2 regularization [Def - %(default)s]", metavar="[L2 Reg Param]")
 
     return parser.parse_args()
