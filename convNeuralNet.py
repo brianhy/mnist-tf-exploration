@@ -6,18 +6,6 @@ import argparse as argp
 
 import tensorflow as tf
 
-# Create a tf weight variable with a small amount of noise.
-# Truncated normal is truncated at 2 std deviations.
-# Default mean is 0.0
-def weight_variable(shape, name=""):
-    initial = tf.truncated_normal(shape, stddev=0.1)
-    return tf.Variable(initial, name)
-
-# Create a bias with slightly positive lean.
-def bias_variable(shape, name=""):
-    initial = tf.constant(0.1, shape=shape)
-    return tf.Variable(initial)
-
 def MsecNow():
     return int(round(time.time() * 1000))
 
@@ -47,6 +35,23 @@ class SigmoidMnistNeuralNet(object):
         # will be dumped hereIn
         self.m_strLogFolder = strLogFolderIn
 
+
+    # Create a tf weight variable with a small amount of noise.
+    # Truncated normal is truncated at 2 std deviations.
+    # Default mean is 0.0
+    @staticmethod
+    def weight_variable(shape, name=""):
+        initial = tf.truncated_normal(shape, stddev=0.1)
+        return tf.Variable(initial, name)
+
+
+    # Create a bias with slightly positive lean.
+    @staticmethod
+    def bias_variable(shape, name=""):
+        initial = tf.constant(0.1, shape=shape)
+        return tf.Variable(initial)
+
+
     def Train(self):
         # Read in mnist data from official mnist source
         mnist = input_data.read_data_sets("MNIST_data", one_hot=True)
@@ -59,14 +64,14 @@ class SigmoidMnistNeuralNet(object):
 
 
         # Second Layer (first hidden layer)
-        lyr2_W = weight_variable([784, self.m_cNeuronsLyr2], name="lyr2_W")
-        lyr2_b = bias_variable([self.m_cNeuronsLyr2], name="lyr2_b")
+        lyr2_W = SigmoidMnistNeuralNet.weight_variable([784, self.m_cNeuronsLyr2], name="lyr2_W")
+        lyr2_b = SigmoidMnistNeuralNet.bias_variable([self.m_cNeuronsLyr2], name="lyr2_b")
 
         lyr2_Activation = tf.nn.sigmoid(tf.matmul(x, lyr2_W) + lyr2_b)
 
         # Third Layer (Output Layer)
-        lyr3_W = weight_variable([self.m_cNeuronsLyr2, 10], name="lyr3_W")
-        lyr3_b = bias_variable([10], name="lyr3_b")
+        lyr3_W = SigmoidMnistNeuralNet.weight_variable([self.m_cNeuronsLyr2, 10], name="lyr3_W")
+        lyr3_b = SigmoidMnistNeuralNet.bias_variable([10], name="lyr3_b")
 
         output = tf.nn.sigmoid(tf.matmul(lyr2_Activation, lyr3_W) + lyr3_b)
 
@@ -117,6 +122,7 @@ class SigmoidMnistNeuralNet(object):
             test_summary_writer.add_summary(test_summary, i)
 
         return sess.run(accuracy, feed_dict=dictTestData)
+
 
 def ParseCmdLine():
     parser = argp.ArgumentParser(description="Learn hand-written digits using Sigmoid network")
