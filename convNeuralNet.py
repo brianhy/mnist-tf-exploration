@@ -123,8 +123,8 @@ class SigmoidMnistNeuralNet(object):
             test_summary = sess.run(mrg_summary, feed_dict=dictTestData)
             test_summary_writer.add_summary(test_summary, i)
 
-        return sess.run(accuracy, feed_dict=dictTestData)
-
+        self.m_dmsecTrain = MsecNow() - msecStart
+        self.m_accTest = sess.run(accuracy, feed_dict=dictTestData)
 
 def ParseCmdLine():
     parser = argp.ArgumentParser(description="Learn hand-written digits using Sigmoid network")
