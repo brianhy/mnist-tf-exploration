@@ -53,6 +53,8 @@ class SigmoidMnistNeuralNet(object):
 
 
     def Train(self):
+        msecStart = MsecNow()
+
         # Read in mnist data from official mnist source
         mnist = input_data.read_data_sets("MNIST_data", one_hot=True)
 
@@ -141,21 +143,20 @@ def ParseCmdLine():
 
     return parser.parse_args()
 
-msecStart = MsecNow()
+if (__name__ == "__main__"):
+    options = ParseCmdLine()
+    fltLrnRate = options.fltLrnRate
+    cEpochs = options.cEpochs
+    citemsBatch = options.citemsBatch
+    cNeuronsLyr2 = options.cNeuronsHiddenLyr
+    fltL2RegParam = options.fltL2RegParam
 
-options = ParseCmdLine()
-fltLrnRate = options.fltLrnRate
-cEpochs = options.cEpochs
-citemsBatch = options.citemsBatch
-cNeuronsLyr2 = options.cNeuronsHiddenLyr
-fltL2RegParam = options.fltL2RegParam
+    # Here's where all the tensorflow logs will go.
+    # For example, things like graph viz and learning information
+    # will be dumped here
+    strLogFolder = options.strLogFolder
 
-# Here's where all the tensorflow logs will go.
-# For example, things like graph viz and learning information
-# will be dumped here
-strLogFolder = options.strLogFolder
+    smnn = SigmoidMnistNeuralNet(fltLrnRate, cEpochs, citemsBatch, cNeuronsLyr2, fltL2RegParam, strLogFolder)
+    accuracy = smnn.Train()
 
-smnn = SigmoidMnistNeuralNet(fltLrnRate, cEpochs, citemsBatch, cNeuronsLyr2, fltL2RegParam, strLogFolder)
-accuracy = smnn.Train()
-
-print("acc = {0:.5f}".format(accuracy))
+    print("acc = {0:.5f}".format(accuracy))
