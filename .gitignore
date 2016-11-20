@@ -5,3 +5,6 @@
 
 # Ignore MNIST data files
 MNIST_data/**/*
+
+# Ignore all pycache files
+__pycache__/**/*

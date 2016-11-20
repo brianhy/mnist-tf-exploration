@@ -55,6 +55,18 @@ class SigmoidMnistNeuralNet(object):
     def Train(self):
         msecStart = MsecNow()
 
+        print("lrnRate={}, "
+                "cEpochs={}, "
+                "citemsBatch={}, "
+                "cNeuronsLyr2={}, "
+                "fltL2RegParam={}, "
+                "strLogFolder={}".format(self.m_fltLrnRate,
+                                            self.m_cEpochs,
+                                            self.m_citemsBatch,
+                                            self.m_cNeuronsLyr2,
+                                            self.m_fltL2RegParam,
+                                            self.m_strLogFolder))
+
         # Read in mnist data from official mnist source
         mnist = input_data.read_data_sets("MNIST_data", one_hot=True)
 
@@ -115,16 +127,26 @@ class SigmoidMnistNeuralNet(object):
 
         for i in range(self.m_cEpochs):
             batch = mnist.train.next_batch(self.m_citemsBatch)
-            if ((i % 10) == 0):
-                print("step {}".format(i))
-            sess.run(train_step, feed_dict={x: batch[0], y_: batch[1]})
-            train_summary = sess.run(mrg_summary, feed_dict={x: batch[0], y_: batch[1]})
+            dictIn = {x: batch[0], y_: batch[1]}
+            sess.run(train_step, feed_dict=dictIn)
+            train_summary = sess.run(mrg_summary, feed_dict=dictIn)
             train_summary_writer.add_summary(train_summary, i)
             test_summary = sess.run(mrg_summary, feed_dict=dictTestData)
             test_summary_writer.add_summary(test_summary, i)
 
+        train_summary_writer.flush()
+        train_summary_writer.close()
+        test_summary_writer.flush()
+        test_summary_writer.close()
+
         self.m_dmsecTrain = MsecNow() - msecStart
         self.m_accTest = sess.run(accuracy, feed_dict=dictTestData)
+
+        # Close the session and reset the graph when done.
+        # If we don't reset the graph, then subsequent calls to train
+        # within the same python session will fail.
+        sess.close()
+        tf.reset_default_graph()
 
 def ParseCmdLine():
     parser = argp.ArgumentParser(description="Learn hand-written digits using Sigmoid network")
@@ -157,6 +179,6 @@ if (__name__ == "__main__"):
     strLogFolder = options.strLogFolder
 
     smnn = SigmoidMnistNeuralNet(fltLrnRate, cEpochs, citemsBatch, cNeuronsLyr2, fltL2RegParam, strLogFolder)
-    accuracy = smnn.Train()
+    smnn.Train()
 
-    print("acc = {0:.5f}".format(accuracy))
+    print("acc = {0:.5f}".format(smnn.m_accTest))
