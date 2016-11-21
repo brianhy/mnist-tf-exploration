@@ -95,7 +95,8 @@ class SigmoidMnistNeuralNet(object):
         # distribution.  Hence, we interpret each neuron as a Bernoulli distribution (0 or 1)
         # with output telling us probability of a single neuron in output is a 1.  Doing so
         # makes the cross-entropy optimization behave.
-        cross_entropy = -tf.reduce_sum(y_ * tf.log(output) + (1 - y_) * tf.log(1 - output), reduction_indices=[1])
+        kludge = 1e-10 # Add some kludge to the tf.log() calls so we don't pass in a negative arg
+        cross_entropy = -tf.reduce_sum(y_ * tf.log(output + kludge) + (1 - y_) * tf.log(1 - output + kludge), reduction_indices=[1])
 
         # We're going to add in some L2 regularization across the weights in our layers.
         # This will be Lambda/N * Sum(w^2, across all weights) - where N is items in the
