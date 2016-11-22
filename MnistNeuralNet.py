@@ -3,11 +3,23 @@ import time
 
 from tensorflow.examples.tutorials.mnist import input_data
 import argparse as argp
-
+import numpy as np
 import tensorflow as tf
+from PIL import Image as pimg
+import os
 
 def MsecNow():
     return int(round(time.time() * 1000))
+
+
+# Save the provided image/width/height to strSaveFilePath
+#
+# Note:  Will resize picture to 255 for easier visualization
+def SaveImage(dataMnistPic, width, height, strSaveFilePath):
+    imgMnist = pimg.new("L", (width, height))
+    imgMnist.putdata(dataMnistPic, 255)
+    imgMnistSave = imgMnist.resize((112, 112))
+    imgMnistSave.save(strSaveFilePath)
 
 class SigmoidMnistNeuralNet(object):
     s_fltLrnRate=1.0
@@ -23,17 +35,41 @@ class SigmoidMnistNeuralNet(object):
                     citemsBatchIn=s_citemsBatch,
                     cNeuronsHiddenLyrIn=s_cNeuronsHiddenLyr,
                     fltL2RegParamIn=s_fltL2RegParam,
-                    strLogFolderIn=s_strLogFolder):
+                    strLogFolderIn=s_strLogFolder,
+                    fExportPicsOfMislabeledIn=False,
+                    fUseFullTestSetIn=False):
         self.m_fltLrnRate = fltLrnRateIn
         self.m_cEpochs = cEpochsIn
         self.m_citemsBatch = citemsBatchIn
         self.m_cNeuronsLyr2 = cNeuronsHiddenLyrIn
         self.m_fltL2RegParam = fltL2RegParamIn
+        self.m_fExportPicsOfMislabeled = fExportPicsOfMislabeledIn
+        self.m_fUseFullTestSet = fUseFullTestSetIn
 
         # Here's where all the tensorflow logs will go.
         # For example, things like graph viz and learning information
         # will be dumped hereIn
         self.m_strLogFolder = strLogFolderIn
+
+
+    # Save picture of each mislabeled input (mislabeled == network got answer wrong)
+    #
+    #   networkPreds  - Predicted outputs made by the neural net (list)
+    #   expectedPreds - Expected (aka Correct) output for given input (list)
+    #   inputPixelData - List of pixel data used as input by network
+    #   strFolderSave - Folder into which we'll export pictures.
+    #
+    #   Note:  The expectation is that networkPreds/expectedPreds/inputPixelData are
+    #          all the same size
+    @staticmethod
+    def ExportMislabeledPics(networkPreds, expectedPreds, inputPixelData, strFolderSave):
+        os.makedirs(strFolderSave, exist_ok=True) # First, create directory to save into
+
+        lstiWrong = np.where(networkPreds != expectedPreds) # Create list of indexes for wrong predictions
+        lstiWrong = lstiWrong[0] # output of np.where is really a list of lists, so unpack that.
+        for iWrong in lstiWrong:
+            strFilePathSave = os.path.join(strFolderSave, "{}-{}-{}G.bmp".format(iWrong, expectedPreds[iWrong], networkPreds[iWrong]))
+            SaveImage(inputPixelData[iWrong], 28, 28, strFilePathSave)
 
 
     # Create a tf weight variable with a small amount of noise.
@@ -60,12 +96,16 @@ class SigmoidMnistNeuralNet(object):
                 "citemsBatch={}, "
                 "cNeuronsLyr2={}, "
                 "fltL2RegParam={}, "
-                "strLogFolder={}".format(self.m_fltLrnRate,
+                "strLogFolder={}, "
+                "fExportPicsOfMislabeled={}, "
+                "fUseFullTestSet={}".format(self.m_fltLrnRate,
                                             self.m_cEpochs,
                                             self.m_citemsBatch,
                                             self.m_cNeuronsLyr2,
                                             self.m_fltL2RegParam,
-                                            self.m_strLogFolder))
+                                            self.m_strLogFolder,
+                                            self.m_fExportPicsOfMislabeled,
+                                            self.m_fUseFullTestSet))
 
         # Read in mnist data from official mnist source
         mnist = input_data.read_data_sets("MNIST_data", one_hot=True)
@@ -124,7 +164,8 @@ class SigmoidMnistNeuralNet(object):
         test_summary_writer = tf.train.SummaryWriter(self.m_strLogFolder + "/test", graph=tf.get_default_graph())
 
         # Setup test set
-        dictTestData = {x: mnist.test.images[0:self.m_citemsBatch], y_: mnist.test.labels[0:self.m_citemsBatch]}
+        citemsTestSet = mnist.test.images.shape[0] if self.m_fUseFullTestSet else self.m_citemsBatch
+        dictTestData = {x: mnist.test.images[0:citemsTestSet], y_: mnist.test.labels[0:citemsTestSet]}
 
         for i in range(self.m_cEpochs):
             batch = mnist.train.next_batch(self.m_citemsBatch)
@@ -141,7 +182,12 @@ class SigmoidMnistNeuralNet(object):
         test_summary_writer.close()
 
         self.m_dmsecTrain = MsecNow() - msecStart
-        self.m_accTest = sess.run(accuracy, feed_dict=dictTestData)
+        self.m_accTest, networkOutput = sess.run([accuracy, output], feed_dict=dictTestData)
+
+        if (self.m_fExportPicsOfMislabeled):
+            networkPreds = np.argmax(networkOutput, 1)
+            expectedPreds = np.argmax(dictTestData[y_], 1)
+            SigmoidMnistNeuralNet.ExportMislabeledPics(networkPreds, expectedPreds, dictTestData[x], os.path.join(strLogFolder, "MislabeledImgs/"))
 
         # Close the session and reset the graph when done.
         # If we don't reset the graph, then subsequent calls to train
@@ -163,6 +209,10 @@ def ParseCmdLine():
 			help="Number of neurons to put in the hidden layer [Def - %(default)s]", metavar="N")
     parser.add_argument("--l2", default=SigmoidMnistNeuralNet.s_fltL2RegParam, type=float, dest="fltL2RegParam",
 			help="L2 Regularization Parameter, 0 => no L2 regularization [Def - %(default)s]", metavar="[L2 Reg Param]")
+    parser.add_argument("-p", action="store_true", dest="fExportPicsOfMislabeled",
+			help="Export pictures of those inputs that were incorrect [Def - %(default)s]")
+    parser.add_argument("-f", action="store_true", dest="fUseFullTestSet",
+			help="When measuring accuracy of network, use full set set (otherwise, use test set that's same size as mini-batch) [Def - %(default)s]")
 
     return parser.parse_args()
 
@@ -173,13 +223,15 @@ if (__name__ == "__main__"):
     citemsBatch = options.citemsBatch
     cNeuronsLyr2 = options.cNeuronsHiddenLyr
     fltL2RegParam = options.fltL2RegParam
+    fExportPicsOfMislabeled = options.fExportPicsOfMislabeled
+    fUseFullTestSet = options.fUseFullTestSet
 
     # Here's where all the tensorflow logs will go.
     # For example, things like graph viz and learning information
     # will be dumped here
     strLogFolder = options.strLogFolder
 
-    smnn = SigmoidMnistNeuralNet(fltLrnRate, cEpochs, citemsBatch, cNeuronsLyr2, fltL2RegParam, strLogFolder)
+    smnn = SigmoidMnistNeuralNet(fltLrnRate, cEpochs, citemsBatch, cNeuronsLyr2, fltL2RegParam, strLogFolder, fExportPicsOfMislabeled, fUseFullTestSet)
     smnn.Train()
 
     print("acc = {0:.5f}".format(smnn.m_accTest))
