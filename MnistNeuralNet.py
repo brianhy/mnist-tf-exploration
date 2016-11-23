@@ -113,21 +113,24 @@ class SigmoidMnistNeuralNet(object):
         #
         # Setup placeholders for input layer and expected output
         #
-        x = tf.placeholder(tf.float32, shape=[None, 784], name="x")
+        with tf.name_scope("Layer1-Input"):
+            x = tf.placeholder(tf.float32, shape=[None, 784], name="x")
         y_ = tf.placeholder(tf.float32, shape=[None, 10], name="y_")
 
 
         # Second Layer (first hidden layer)
-        lyr2_W = SigmoidMnistNeuralNet.weight_variable([784, self.m_cNeuronsLyr2], name="lyr2_W")
-        lyr2_b = SigmoidMnistNeuralNet.bias_variable([self.m_cNeuronsLyr2], name="lyr2_b")
+        with tf.name_scope("Layer2-Hidden"):
+            lyr2_W = SigmoidMnistNeuralNet.weight_variable([784, self.m_cNeuronsLyr2], name="lyr2_W")
+            lyr2_b = SigmoidMnistNeuralNet.bias_variable([self.m_cNeuronsLyr2], name="lyr2_b")
 
-        lyr2_Activation = tf.nn.sigmoid(tf.matmul(x, lyr2_W) + lyr2_b, name="lyr2_a")
+            lyr2_Activation = tf.nn.sigmoid(tf.matmul(x, lyr2_W) + lyr2_b, name="lyr2_a")
 
         # Third Layer (Output Layer)
-        lyr3_W = SigmoidMnistNeuralNet.weight_variable([self.m_cNeuronsLyr2, 10], name="lyr3_W")
-        lyr3_b = SigmoidMnistNeuralNet.bias_variable([10], name="lyr3_b")
+        with tf.name_scope("Layer3-Output"):
+            lyr3_W = SigmoidMnistNeuralNet.weight_variable([self.m_cNeuronsLyr2, 10], name="lyr3_W")
+            lyr3_b = SigmoidMnistNeuralNet.bias_variable([10], name="lyr3_b")
 
-        output = tf.nn.sigmoid(tf.matmul(lyr2_Activation, lyr3_W) + lyr3_b, name="lyrOutput")
+            output = tf.nn.sigmoid(tf.matmul(lyr2_Activation, lyr3_W) + lyr3_b, name="lyrOutput")
 
         # Cross-entropy calc might look a little odd because we're doing (1 - y_)... calc.
         # But, this is because cross-entropy must be calc'd over a probability distribution,
@@ -135,17 +138,21 @@ class SigmoidMnistNeuralNet(object):
         # distribution.  Hence, we interpret each neuron as a Bernoulli distribution (0 or 1)
         # with output telling us probability of a single neuron in output is a 1.  Doing so
         # makes the cross-entropy optimization behave.
-        kludge = 1e-10 # Add some kludge to the tf.log() calls so we don't pass in a negative arg
-        cross_entropy = -tf.reduce_sum(y_ * tf.log(output + kludge) + (1 - y_) * tf.log(1 - output + kludge), reduction_indices=[1], name="x-entropy")
+        with tf.name_scope("Cost"):
+            with tf.name_scope("x-entropy"):
+                kludge = 1e-10 # Add some kludge to the tf.log() calls so we don't pass in a negative arg
+                cross_entropy = -tf.reduce_sum(y_ * tf.log(output + kludge) + (1 - y_) * tf.log(1 - output + kludge), reduction_indices=[1], name="x-entropy-calc")
 
-        # We're going to add in some L2 regularization across the weights in our layers.
-        # This will be Lambda/N * Sum(w^2, across all weights) - where N is items in the
-        # mini-batch.
-        L2_reg = self.m_fltL2RegParam * (tf.nn.l2_loss(lyr2_W) + tf.nn.l2_loss(lyr3_W))
-        tf.scalar_summary("L2_reg", L2_reg)
+            # We're going to add in some L2 regularization across the weights in our layers.
+            # This will be Lambda/N * Sum(w^2, across all weights) - where N is items in the
+            # mini-batch.
+            with tf.name_scope("L2_Reg"):
+                L2_reg = self.m_fltL2RegParam * (tf.nn.l2_loss(lyr2_W) + tf.nn.l2_loss(lyr3_W))
+                L2_reg = tf.identity(L2_reg, "L2_reg-calc")
+                tf.scalar_summary("L2_reg", L2_reg)
 
-        cost = tf.reduce_mean(cross_entropy + L2_reg) # Here's where we divide cost by N (# items in mini-batch)
-        tf.scalar_summary("cost", cost)
+            cost = tf.reduce_mean(cross_entropy + L2_reg, name="cost-calc") # Here's where we divide cost by N (# items in mini-batch)
+            tf.scalar_summary("cost", cost)
 
         train_step = tf.train.GradientDescentOptimizer(self.m_fltLrnRate).minimize(cost)
         correct_prediction = tf.equal(tf.argmax(output, 1), tf.argmax(y_, 1))
