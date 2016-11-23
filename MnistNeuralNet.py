@@ -78,14 +78,14 @@ class SigmoidMnistNeuralNet(object):
     @staticmethod
     def weight_variable(shape, name=""):
         initial = tf.truncated_normal(shape, stddev=0.1)
-        return tf.Variable(initial, name)
+        return tf.Variable(initial, name=name)
 
 
     # Create a bias with slightly positive lean.
     @staticmethod
     def bias_variable(shape, name=""):
         initial = tf.constant(0.1, shape=shape)
-        return tf.Variable(initial)
+        return tf.Variable(initial, name=name)
 
 
     def Train(self):
@@ -121,13 +121,13 @@ class SigmoidMnistNeuralNet(object):
         lyr2_W = SigmoidMnistNeuralNet.weight_variable([784, self.m_cNeuronsLyr2], name="lyr2_W")
         lyr2_b = SigmoidMnistNeuralNet.bias_variable([self.m_cNeuronsLyr2], name="lyr2_b")
 
-        lyr2_Activation = tf.nn.sigmoid(tf.matmul(x, lyr2_W) + lyr2_b)
+        lyr2_Activation = tf.nn.sigmoid(tf.matmul(x, lyr2_W) + lyr2_b, name="lyr2_a")
 
         # Third Layer (Output Layer)
         lyr3_W = SigmoidMnistNeuralNet.weight_variable([self.m_cNeuronsLyr2, 10], name="lyr3_W")
         lyr3_b = SigmoidMnistNeuralNet.bias_variable([10], name="lyr3_b")
 
-        output = tf.nn.sigmoid(tf.matmul(lyr2_Activation, lyr3_W) + lyr3_b)
+        output = tf.nn.sigmoid(tf.matmul(lyr2_Activation, lyr3_W) + lyr3_b, name="lyrOutput")
 
         # Cross-entropy calc might look a little odd because we're doing (1 - y_)... calc.
         # But, this is because cross-entropy must be calc'd over a probability distribution,
@@ -136,7 +136,7 @@ class SigmoidMnistNeuralNet(object):
         # with output telling us probability of a single neuron in output is a 1.  Doing so
         # makes the cross-entropy optimization behave.
         kludge = 1e-10 # Add some kludge to the tf.log() calls so we don't pass in a negative arg
-        cross_entropy = -tf.reduce_sum(y_ * tf.log(output + kludge) + (1 - y_) * tf.log(1 - output + kludge), reduction_indices=[1])
+        cross_entropy = -tf.reduce_sum(y_ * tf.log(output + kludge) + (1 - y_) * tf.log(1 - output + kludge), reduction_indices=[1], name="x-entropy")
 
         # We're going to add in some L2 regularization across the weights in our layers.
         # This will be Lambda/N * Sum(w^2, across all weights) - where N is items in the
