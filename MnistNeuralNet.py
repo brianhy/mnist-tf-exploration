@@ -25,7 +25,7 @@ class SigmoidMnistNeuralNet(object):
     s_fltLrnRate=1.0
     s_cEpochs=1000
     s_citemsBatch=100
-    s_cNeuronsHiddenLyr=30
+    s_lstcNeuronsPerLayer=[30]
     s_fltL2RegParam=0.0
     s_strLogFolder="/tmp/tensorflow_logs/mnistConvol"
 
@@ -33,7 +33,7 @@ class SigmoidMnistNeuralNet(object):
                     fltLrnRateIn=s_fltLrnRate,
                     cEpochsIn=s_cEpochs,
                     citemsBatchIn=s_citemsBatch,
-                    cNeuronsHiddenLyrIn=s_cNeuronsHiddenLyr,
+                    lstcNeuronsPerLayerIn=s_lstcNeuronsPerLayer,
                     fltL2RegParamIn=s_fltL2RegParam,
                     strLogFolderIn=s_strLogFolder,
                     fExportPicsOfMislabeledIn=False,
@@ -41,7 +41,7 @@ class SigmoidMnistNeuralNet(object):
         self.m_fltLrnRate = fltLrnRateIn
         self.m_cEpochs = cEpochsIn
         self.m_citemsBatch = citemsBatchIn
-        self.m_cNeuronsLyr2 = cNeuronsHiddenLyrIn
+        self.m_lstcNeuronsPerLayer = lstcNeuronsPerLayerIn
         self.m_fltL2RegParam = fltL2RegParamIn
         self.m_fExportPicsOfMislabeled = fExportPicsOfMislabeledIn
         self.m_fUseFullTestSet = fUseFullTestSetIn
@@ -94,14 +94,14 @@ class SigmoidMnistNeuralNet(object):
         print("lrnRate={}, "
                 "cEpochs={}, "
                 "citemsBatch={}, "
-                "cNeuronsLyr2={}, "
+                "lstcNeuronsPerLayer={}, "
                 "fltL2RegParam={}, "
                 "strLogFolder={}, "
                 "fExportPicsOfMislabeled={}, "
                 "fUseFullTestSet={}".format(self.m_fltLrnRate,
                                             self.m_cEpochs,
                                             self.m_citemsBatch,
-                                            self.m_cNeuronsLyr2,
+                                            self.m_lstcNeuronsPerLayer,
                                             self.m_fltL2RegParam,
                                             self.m_strLogFolder,
                                             self.m_fExportPicsOfMislabeled,
@@ -118,19 +118,35 @@ class SigmoidMnistNeuralNet(object):
         y_ = tf.placeholder(tf.float32, shape=[None, 10], name="y_")
 
 
-        # Second Layer (first hidden layer)
-        with tf.name_scope("Layer2-Hidden"):
-            lyr2_W = SigmoidMnistNeuralNet.weight_variable([784, self.m_cNeuronsLyr2], name="lyr2_W")
-            lyr2_b = SigmoidMnistNeuralNet.bias_variable([self.m_cNeuronsLyr2], name="lyr2_b")
+        #
+        # Setup Hidden Layers
+        #
+        with tf.name_scope("HiddenLayers"):
+            lstwHiddenLyr = list()
+            lstaHiddenLyr = list()
+            ilayer = 2
+            for cNeuronsLayerCur in self.m_lstcNeuronsPerLayer:
+                with tf.name_scope("Layer{}-Hidden".format(ilayer)):
+                    # Create weight and bias tensors
+                    cRows = lstwHiddenLyr[-1].get_shape()[1].value if len(lstwHiddenLyr) > 0 else 784
+                    w = SigmoidMnistNeuralNet.weight_variable([cRows, cNeuronsLayerCur], name="lyr{}_w".format(ilayer))
+                    b = SigmoidMnistNeuralNet.bias_variable([cNeuronsLayerCur], name="lyr{}_b".format(ilayer))
+                    aPrev = lstaHiddenLyr[-1] if len(lstaHiddenLyr) > 0 else x
 
-            lyr2_Activation = tf.nn.sigmoid(tf.matmul(x, lyr2_W) + lyr2_b, name="lyr2_a")
+                    # Setup neuron activation for this layer
+                    a = tf.nn.sigmoid(tf.matmul(aPrev, w) + b)
+
+                    # Stash the weights activations for later
+                    lstwHiddenLyr.append(w)
+                    lstaHiddenLyr.append(a)
+                ilayer = ilayer + 1
 
         # Third Layer (Output Layer)
-        with tf.name_scope("Layer3-Output"):
-            lyr3_W = SigmoidMnistNeuralNet.weight_variable([self.m_cNeuronsLyr2, 10], name="lyr3_W")
-            lyr3_b = SigmoidMnistNeuralNet.bias_variable([10], name="lyr3_b")
+        with tf.name_scope("Layer{}-Output".format(ilayer)):
+            lyrOutput_w = SigmoidMnistNeuralNet.weight_variable([self.m_lstcNeuronsPerLayer[-1], 10], name="lyr{}_w".format(ilayer))
+            lyrOutput_b = SigmoidMnistNeuralNet.bias_variable([10], name="lyr{}_b".format(ilayer))
 
-            output = tf.nn.sigmoid(tf.matmul(lyr2_Activation, lyr3_W) + lyr3_b, name="lyrOutput")
+            lyrOutput_a = tf.nn.sigmoid(tf.matmul(lstaHiddenLyr[-1], lyrOutput_w) + lyrOutput_b, name="lyrOutput")
 
         # Cross-entropy calc might look a little odd because we're doing (1 - y_)... calc.
         # But, this is because cross-entropy must be calc'd over a probability distribution,
@@ -141,21 +157,26 @@ class SigmoidMnistNeuralNet(object):
         with tf.name_scope("Cost"):
             with tf.name_scope("x-entropy"):
                 kludge = 1e-10 # Add some kludge to the tf.log() calls so we don't pass in a negative arg
-                cross_entropy = -tf.reduce_sum(y_ * tf.log(output + kludge) + (1 - y_) * tf.log(1 - output + kludge), reduction_indices=[1], name="x-entropy-calc")
+                cross_entropy = -tf.reduce_sum(y_ * tf.log(lyrOutput_a + kludge) + (1 - y_) * tf.log(1 - lyrOutput_a + kludge), reduction_indices=[1], name="x-entropy-calc")
 
             # We're going to add in some L2 regularization across the weights in our layers.
             # This will be Lambda/N * Sum(w^2, across all weights) - where N is items in the
             # mini-batch.
             with tf.name_scope("L2_Reg"):
-                L2_reg = self.m_fltL2RegParam * (tf.nn.l2_loss(lyr2_W) + tf.nn.l2_loss(lyr3_W))
+                L2_reg = tf.nn.l2_loss(lyrOutput_w)
+                for w in lstwHiddenLyr:
+                    L2_reg = L2_reg + tf.nn.l2_loss(w)
+
+                L2_reg = self.m_fltL2RegParam * L2_reg
                 L2_reg = tf.identity(L2_reg, "L2_reg-calc")
                 tf.scalar_summary("L2_reg", L2_reg)
 
-            cost = tf.reduce_mean(cross_entropy + L2_reg, name="cost-calc") # Here's where we divide cost by N (# items in mini-batch)
+            # cost = tf.reduce_mean(cross_entropy + L2_reg, name="cost-calc") # Here's where we divide cost by N (# items in mini-batch)
+            cost = tf.reduce_mean(cross_entropy, name="cost-calc") # Here's where we divide cost by N (# items in mini-batch)
             tf.scalar_summary("cost", cost)
 
         train_step = tf.train.GradientDescentOptimizer(self.m_fltLrnRate).minimize(cost)
-        correct_prediction = tf.equal(tf.argmax(output, 1), tf.argmax(y_, 1))
+        correct_prediction = tf.equal(tf.argmax(lyrOutput_a, 1), tf.argmax(y_, 1))
 
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
         tf.scalar_summary("accuracy", accuracy)
@@ -189,7 +210,7 @@ class SigmoidMnistNeuralNet(object):
         test_summary_writer.close()
 
         self.m_dmsecTrain = MsecNow() - msecStart
-        self.m_accTest, networkOutput = sess.run([accuracy, output], feed_dict=dictTestData)
+        self.m_accTest, networkOutput = sess.run([accuracy, lyrOutput_a], feed_dict=dictTestData)
 
         if (self.m_fExportPicsOfMislabeled):
             networkPreds = np.argmax(networkOutput, 1)
@@ -212,7 +233,7 @@ def ParseCmdLine():
 			help="Folder where to put logs for tensorboard [Def - %(default)s]", metavar="[Log Folder Path]")
     parser.add_argument("-m", "--miniBatchSize", default=SigmoidMnistNeuralNet.s_citemsBatch, type=int, dest="citemsBatch",
 			help="Number of items to run per epoch [Def - %(default)s]", metavar="[mini batch size]")
-    parser.add_argument("-n", default=SigmoidMnistNeuralNet.s_cNeuronsHiddenLyr, type=int, dest="cNeuronsHiddenLyr",
+    parser.add_argument("-l", default=SigmoidMnistNeuralNet.s_lstcNeuronsPerLayer, type=int, dest="lstcNeuronsPerLayer", nargs="+",
 			help="Number of neurons to put in the hidden layer [Def - %(default)s]", metavar="N")
     parser.add_argument("--l2", default=SigmoidMnistNeuralNet.s_fltL2RegParam, type=float, dest="fltL2RegParam",
 			help="L2 Regularization Parameter, 0 => no L2 regularization [Def - %(default)s]", metavar="[L2 Reg Param]")
@@ -228,7 +249,7 @@ if (__name__ == "__main__"):
     fltLrnRate = options.fltLrnRate
     cEpochs = options.cEpochs
     citemsBatch = options.citemsBatch
-    cNeuronsLyr2 = options.cNeuronsHiddenLyr
+    lstcNeuronsPerLayer = options.lstcNeuronsPerLayer
     fltL2RegParam = options.fltL2RegParam
     fExportPicsOfMislabeled = options.fExportPicsOfMislabeled
     fUseFullTestSet = options.fUseFullTestSet
@@ -238,7 +259,7 @@ if (__name__ == "__main__"):
     # will be dumped here
     strLogFolder = options.strLogFolder
 
-    smnn = SigmoidMnistNeuralNet(fltLrnRate, cEpochs, citemsBatch, cNeuronsLyr2, fltL2RegParam, strLogFolder, fExportPicsOfMislabeled, fUseFullTestSet)
+    smnn = SigmoidMnistNeuralNet(fltLrnRate, cEpochs, citemsBatch, lstcNeuronsPerLayer, fltL2RegParam, strLogFolder, fExportPicsOfMislabeled, fUseFullTestSet)
     smnn.Train()
 
     print("acc = {0:.5f}".format(smnn.m_accTest))

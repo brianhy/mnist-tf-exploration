@@ -18,7 +18,7 @@ class RunDesc(object):
 
 def DictArgsDefCreate():
     dictT = dict()
-    dictT["cNeurons"] = MnistNeuralNet.SigmoidMnistNeuralNet.s_cNeuronsHiddenLyr
+    dictT["lstcNeuronsPL"] = MnistNeuralNet.SigmoidMnistNeuralNet.s_lstcNeuronsPerLayer
     dictT["cEpochs"] = MnistNeuralNet.SigmoidMnistNeuralNet.s_cEpochs
     dictT["l2"] = MnistNeuralNet.SigmoidMnistNeuralNet.s_fltL2RegParam
     dictT["citemsMiniBatch"] = MnistNeuralNet.SigmoidMnistNeuralNet.s_citemsBatch
@@ -31,7 +31,7 @@ def StrCmdLineFromRd(rd):
     return "StrCmdLineFromRd"
 
 def StrRunNameFromRd(rd):
-    strName = "nN{}.cE{}.cM{}.l2{}.".format(rd.dictArgs["cNeurons"], rd.dictArgs["cEpochs"], rd.dictArgs["citemsMiniBatch"], rd.dictArgs["l2"])
+    strName = "nN{}.cE{}.cM{}.l2{}.".format(rd.dictArgs["lstcNeuronsPL"], rd.dictArgs["cEpochs"], rd.dictArgs["citemsMiniBatch"], rd.dictArgs["l2"])
     return strName
 
 def RrInitFromRd(rd, iterT):
@@ -46,7 +46,7 @@ def SmnnFromRd(rd):
                             fltLrnRateIn=rd.dictArgs["learnRate"],
                             cEpochsIn=rd.dictArgs["cEpochs"],
                             citemsBatchIn=rd.dictArgs["citemsMiniBatch"],
-                            cNeuronsHiddenLyrIn=rd.dictArgs["cNeurons"],
+                            lstcNeuronsPerLayerIn=rd.dictArgs["lstcNeuronsPL"],
                             fltL2RegParamIn=rd.dictArgs["l2"],
                             strLogFolderIn=rd.dictArgs["logFolder"])
     return smnn
@@ -59,7 +59,7 @@ def StrResultFromRrRd(rr, rd):
                 rr.iterN,
                 rr.acc,
                 rr.dmsecTrain,
-                rd.dictArgs["cNeurons"],
+                rd.dictArgs["lstcNeuronsPL"],
                 rd.dictArgs["cEpochs"],
                 rd.dictArgs["citemsMiniBatch"],
                 rd.dictArgs["l2"])
@@ -92,7 +92,7 @@ for cEpochs, citemsMiniBatch in itertools.product(lstEpochs, lstMiniBatches):
 for cEpochs, citemsMiniBatch in itertools.product(lstEpochs, lstMiniBatches):
     rd = RunDesc()
     rd.dictArgs = DictArgsDefCreate()
-    rd.dictArgs["cNeurons"] = 100
+    rd.dictArgs["lstcNeuronsPL"] = [100]
     rd.dictArgs["cEpochs"] = cEpochs
     rd.dictArgs["citemsMiniBatch"] = citemsMiniBatch
 
@@ -147,7 +147,7 @@ print("")
 print("Dumping results to CSV '{}' . . .".format(strOutFile))
 fhLog = open(strOutFile, "w+")
 
-strHeader = "CmdLine, RunName, Iter, Accuracy, Dmsec train, cNeurons, cEpochs, miniBatch, l2\n"
+strHeader = "CmdLine, RunName, Iter, Accuracy, Dmsec train, lstcNeuronsPL, cEpochs, miniBatch, l2\n"
 fhLog.write(strHeader)
 for rd, rr in lstRr:
     strOut = StrResultFromRrRd(rr, rd)
