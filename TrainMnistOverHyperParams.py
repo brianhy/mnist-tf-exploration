@@ -1,6 +1,7 @@
 import MnistNeuralNet
 import itertools
-
+import time
+import datetime as dt
 
 class RunResults(object):
     def __init__(self):
@@ -24,6 +25,8 @@ def DictArgsDefCreate():
     dictT["citemsMiniBatch"] = MnistNeuralNet.SigmoidMnistNeuralNet.s_citemsBatch
     dictT["logFolder"] = MnistNeuralNet.SigmoidMnistNeuralNet.s_strLogFolder
     dictT["learnRate"] = MnistNeuralNet.SigmoidMnistNeuralNet.s_fltLrnRate
+    dictT["fUseFullTestSet"] = MnistNeuralNet.SigmoidMnistNeuralNet.s_fUseFullTestSet
+
     return dictT
 
 
@@ -48,12 +51,13 @@ def SmnnFromRd(rd):
                             citemsBatchIn=rd.dictArgs["citemsMiniBatch"],
                             lstcNeuronsPerLayerIn=rd.dictArgs["lstcNeuronsPL"],
                             fltL2RegParamIn=rd.dictArgs["l2"],
-                            strLogFolderIn=rd.dictArgs["logFolder"])
+                            strLogFolderIn=rd.dictArgs["logFolder"],
+                            fUseFullTestSetIn=rd.dictArgs["fUseFullTestSet"])
     return smnn
 
 
 def StrResultFromRrRd(rr, rd):
-    strOut = "{0}, {1}, {2}, {3:0.5f}, {4}, {5}, {6}, {7}, {8:0.5f}\n".format(
+    strOut = "{0}, {1}, {2}, {3:0.5f}, {4}, {5}, {6}, {7}, {8:0.5f}, {9}\n".format(
                 rr.strCmdLine,
                 rr.strRunName,
                 rr.iterN,
@@ -62,15 +66,37 @@ def StrResultFromRrRd(rr, rd):
                 rd.dictArgs["lstcNeuronsPL"],
                 rd.dictArgs["cEpochs"],
                 rd.dictArgs["citemsMiniBatch"],
-                rd.dictArgs["l2"])
+                rd.dictArgs["l2"],
+                rd.dictArgs["fUseFullTestSet"])
 
     return strOut
 
 
+def MsecNow():
+    return int(round(time.time() * 1000))
+
+
+def StrElapsedTimeFromTd(td):
+    lstStr = list()
+    if (td.days > 0):
+        lstStr.append("{} days".format(td.days))
+    seconds = td.seconds
+    if (seconds > 60 * 60): # Handle hours first
+        cHours = seconds // (60 * 60)
+        lstStr.append("{} hours".format(cHours))
+        seconds -= cHours * 60 * 60
+    if (seconds > 60): # Handle mins
+        cMins = seconds // 60
+        lstStr.append("{} mins".format(cMins))
+        seconds -= cMins * 60
+    lstStr.append("{} secs".format(seconds))
+    lstStr.append("{} mc secs".format(td.microseconds))
+
+    return ", ".join(lstStr)
+
 cIters = 3
 
-rd = RunDesc()
-rd.dictArgs = DictArgsDefCreate()
+dtStart = dt.datetime.now()
 
 lstRd = list()
 
@@ -78,37 +104,27 @@ lstRd = list()
 # Setup RunDesc
 #
 
-lstEpochs = [100, 500, 1000, 5000, 10000]
-lstMiniBatches = [10, 50, 100, 200, 500]
-for cEpochs, citemsMiniBatch in itertools.product(lstEpochs, lstMiniBatches):
+lstlstNeuron = [[30], [100], [100, 20], [100, 50], [100, 100], [100, 100, 100]]
+lstEpochs = [1000, 2000, 5000, 10000]
+lstMiniBatches = [100, 200, 500]
+# lstlstNeuron = [[30]]
+# lstEpochs = [100]
+# lstMiniBatches = [50]
+for lstNeuronPL, cEpochs, citemsMiniBatch in itertools.product(lstlstNeuron, lstEpochs, lstMiniBatches):
     rd = RunDesc()
     rd.dictArgs = DictArgsDefCreate()
+    rd.dictArgs["fUseFullTestSet"] = True
     rd.dictArgs["cEpochs"] = cEpochs
     rd.dictArgs["citemsMiniBatch"] = citemsMiniBatch
+    rd.dictArgs["lstcNeuronsPL"] = lstNeuronPL
 
     lstRd.append(rd)
 
-# Runs for epoch/mini batch variation over cNeurons = 100
-for cEpochs, citemsMiniBatch in itertools.product(lstEpochs, lstMiniBatches):
-    rd = RunDesc()
-    rd.dictArgs = DictArgsDefCreate()
-    rd.dictArgs["lstcNeuronsPL"] = [100]
-    rd.dictArgs["cEpochs"] = cEpochs
-    rd.dictArgs["citemsMiniBatch"] = citemsMiniBatch
-
-    lstRd.append(rd)
-
-
-# Runs for l2 over epochs
-lstL2 = [.00001, .0001, .001, .01, .1]
-for l2, cEpochs in itertools.product(lstL2, lstEpochs):
-    rd = RunDesc()
-    rd.dictArgs = DictArgsDefCreate()
-    rd.dictArgs["l2"] = l2
-    rd.dictArgs["cEpochs"] = cEpochs
-    rd.dictArgs["citemsMiniBatch"] = 100
-
-    lstRd.append(rd)
+# Setup output file for logging while training
+strOutFile = "/tmp/mnistTrain.csv"
+fhLog = open(strOutFile, "w")
+strHeader = "CmdLine, RunName, Iter, Accuracy, Dmsec train, lstcNeuronsPL, cEpochs, miniBatch, l2, fUseFullTestSet\n"
+fhLog.write(strHeader)
 
 #
 # Train and gather results
@@ -121,8 +137,9 @@ for rd in lstRd:
         rr = RrInitFromRd(rd, iterT)
 
         # Print Status
-        print("[{:0.2f}%] {} / {}; iter {} / {} - {}".format(
+        print("[{:0.2f}%] [{}] {} / {}; iter {} / {} - {}".format(
                     100 * float(irun*cIters + iterT + 1) / (len(lstRd) * cIters),
+                    StrElapsedTimeFromTd(dt.datetime.now() - dtStart),
                     irun + 1,
                     len(lstRd),
                     iterT + 1,
@@ -137,21 +154,18 @@ for rd in lstRd:
         rr.dmsecTrain = smnn.m_dmsecTrain
         rr.acc = smnn.m_accTest
         lstRr.append((rd, rr))
+
+        # Log results
+        strOut = StrResultFromRrRd(rr, rd)
+        fhLog.write(strOut)
+        fhLog.flush()
     irun = irun + 1
 
-#
-# Output results to file
-#
-strOutFile = "/tmp/mnistTrain.csv"
-print("")
-print("Dumping results to CSV '{}' . . .".format(strOutFile))
-fhLog = open(strOutFile, "w+")
-
-strHeader = "CmdLine, RunName, Iter, Accuracy, Dmsec train, lstcNeuronsPL, cEpochs, miniBatch, l2\n"
-fhLog.write(strHeader)
-for rd, rr in lstRr:
-    strOut = StrResultFromRrRd(rr, rd)
-    fhLog.write(strOut)
-
 fhLog.close()
-print("Finished dumping results")
+
+
+print("")
+print("Dumped results to CSV '{}'".format(strOutFile))
+
+print("")
+print("Total time:  {}".format(StrElapsedTimeFromTd(dt.datetime.now() - dtStart)))

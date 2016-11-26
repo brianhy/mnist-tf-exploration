@@ -28,6 +28,7 @@ class SigmoidMnistNeuralNet(object):
     s_lstcNeuronsPerLayer=[30]
     s_fltL2RegParam=0.0
     s_strLogFolder="/tmp/tensorflow_logs/mnistConvol"
+    s_fUseFullTestSet=False
 
     def __init__(self,
                     fltLrnRateIn=s_fltLrnRate,
@@ -37,7 +38,7 @@ class SigmoidMnistNeuralNet(object):
                     fltL2RegParamIn=s_fltL2RegParam,
                     strLogFolderIn=s_strLogFolder,
                     fExportPicsOfMislabeledIn=False,
-                    fUseFullTestSetIn=False):
+                    fUseFullTestSetIn=s_fUseFullTestSet):
         self.m_fltLrnRate = fltLrnRateIn
         self.m_cEpochs = cEpochsIn
         self.m_citemsBatch = citemsBatchIn
