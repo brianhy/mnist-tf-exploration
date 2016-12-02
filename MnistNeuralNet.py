@@ -29,6 +29,7 @@ class SigmoidMnistNeuralNet(object):
     s_fltL2RegParam=0.0
     s_strLogFolder="/tmp/tensorflow_logs/mnistConvol"
     s_fUseFullTestSet=False
+    s_fUseNarrowedWeightInit=True
 
     def __init__(self,
                     fltLrnRateIn=s_fltLrnRate,
@@ -38,7 +39,8 @@ class SigmoidMnistNeuralNet(object):
                     fltL2RegParamIn=s_fltL2RegParam,
                     strLogFolderIn=s_strLogFolder,
                     fExportPicsOfMislabeledIn=False,
-                    fUseFullTestSetIn=s_fUseFullTestSet):
+                    fUseFullTestSetIn=s_fUseFullTestSet,
+                    fUseNarrowedWeightInitIn=s_fUseNarrowedWeightInit):
         self.m_fltLrnRate = fltLrnRateIn
         self.m_cEpochs = cEpochsIn
         self.m_citemsBatch = citemsBatchIn
@@ -46,6 +48,7 @@ class SigmoidMnistNeuralNet(object):
         self.m_fltL2RegParam = fltL2RegParamIn
         self.m_fExportPicsOfMislabeled = fExportPicsOfMislabeledIn
         self.m_fUseFullTestSet = fUseFullTestSetIn
+        self.m_fUseNarrowedWeightInit = fUseNarrowedWeightInitIn
 
         # Here's where all the tensorflow logs will go.
         # For example, things like graph viz and learning information
@@ -73,6 +76,13 @@ class SigmoidMnistNeuralNet(object):
             SaveImage(inputPixelData[iWrong], 28, 28, strFilePathSave)
 
 
+    @staticmethod
+    def weight_variable_narrowed(shape, name=""):
+        cWeights = shape[0]
+        sd = 1 / (cWeights ** .5)
+        initial = tf.truncated_normal(shape, stddev=sd)
+        return tf.Variable(initial, name=name+"_nar")
+
     # Create a tf weight variable with a small amount of noise.
     # Truncated normal is truncated at 2 std deviations.
     # Default mean is 0.0
@@ -99,17 +109,24 @@ class SigmoidMnistNeuralNet(object):
                 "fltL2RegParam={}, "
                 "strLogFolder={}, "
                 "fExportPicsOfMislabeled={}, "
-                "fUseFullTestSet={}".format(self.m_fltLrnRate,
+                "fUseFullTestSet={}, "
+                "fUseNarrowedWeightInit={}".format(self.m_fltLrnRate,
                                             self.m_cEpochs,
                                             self.m_citemsBatch,
                                             self.m_lstcNeuronsPerLayer,
                                             self.m_fltL2RegParam,
                                             self.m_strLogFolder,
                                             self.m_fExportPicsOfMislabeled,
-                                            self.m_fUseFullTestSet))
+                                            self.m_fUseFullTestSet,
+                                            self.m_fUseNarrowedWeightInit))
 
         # Read in mnist data from official mnist source
         mnist = input_data.read_data_sets("MNIST_data", one_hot=True)
+
+        if (self.m_fUseNarrowedWeightInit):
+            pfnWeightInit = SigmoidMnistNeuralNet.weight_variable_narrowed
+        else:
+            pfnWeightInit = SigmoidMnistNeuralNet.weight_variable
 
         #
         # Setup placeholders for input layer and expected output
@@ -130,7 +147,7 @@ class SigmoidMnistNeuralNet(object):
                 with tf.name_scope("Layer{}-Hidden".format(ilayer)):
                     # Create weight and bias tensors
                     cRows = lstwHiddenLyr[-1].get_shape()[1].value if len(lstwHiddenLyr) > 0 else 784
-                    w = SigmoidMnistNeuralNet.weight_variable([cRows, cNeuronsLayerCur], name="lyr{}_w".format(ilayer))
+                    w = pfnWeightInit([cRows, cNeuronsLayerCur], name="lyr{}_w".format(ilayer))
                     b = SigmoidMnistNeuralNet.bias_variable([cNeuronsLayerCur], name="lyr{}_b".format(ilayer))
                     aPrev = lstaHiddenLyr[-1] if len(lstaHiddenLyr) > 0 else x
 
@@ -144,7 +161,7 @@ class SigmoidMnistNeuralNet(object):
 
         # Third Layer (Output Layer)
         with tf.name_scope("Layer{}-Output".format(ilayer)):
-            lyrOutput_w = SigmoidMnistNeuralNet.weight_variable([self.m_lstcNeuronsPerLayer[-1], 10], name="lyr{}_w".format(ilayer))
+            lyrOutput_w = pfnWeightInit([self.m_lstcNeuronsPerLayer[-1], 10], name="lyr{}_w".format(ilayer))
             lyrOutput_b = SigmoidMnistNeuralNet.bias_variable([10], name="lyr{}_b".format(ilayer))
 
             lyrOutput_a = tf.nn.sigmoid(tf.matmul(lstaHiddenLyr[-1], lyrOutput_w) + lyrOutput_b, name="lyrOutput")
@@ -242,6 +259,8 @@ def ParseCmdLine():
 			help="Export pictures of those inputs that were incorrect [Def - %(default)s]")
     parser.add_argument("-f", action="store_true", dest="fUseFullTestSet",
 			help="When measuring accuracy of network, use full set set (otherwise, use test set that's same size as mini-batch) [Def - %(default)s]")
+    parser.add_argument("--vw", action="store_false", dest="fUseNarrowedWeightInit",
+			help="Don't use 'narrowed' weight initilization (not recommended) [Def - %(default)s]")
 
     return parser.parse_args()
 
@@ -254,13 +273,14 @@ if (__name__ == "__main__"):
     fltL2RegParam = options.fltL2RegParam
     fExportPicsOfMislabeled = options.fExportPicsOfMislabeled
     fUseFullTestSet = options.fUseFullTestSet
+    fUseNarrowedWeightInit = options.fUseNarrowedWeightInit
 
     # Here's where all the tensorflow logs will go.
     # For example, things like graph viz and learning information
     # will be dumped here
     strLogFolder = options.strLogFolder
 
-    smnn = SigmoidMnistNeuralNet(fltLrnRate, cEpochs, citemsBatch, lstcNeuronsPerLayer, fltL2RegParam, strLogFolder, fExportPicsOfMislabeled, fUseFullTestSet)
+    smnn = SigmoidMnistNeuralNet(fltLrnRate, cEpochs, citemsBatch, lstcNeuronsPerLayer, fltL2RegParam, strLogFolder, fExportPicsOfMislabeled, fUseFullTestSet, fUseNarrowedWeightInit)
     smnn.Train()
 
     print("acc = {0:.5f}".format(smnn.m_accTest))

@@ -26,6 +26,7 @@ def DictArgsDefCreate():
     dictT["logFolder"] = MnistNeuralNet.SigmoidMnistNeuralNet.s_strLogFolder
     dictT["learnRate"] = MnistNeuralNet.SigmoidMnistNeuralNet.s_fltLrnRate
     dictT["fUseFullTestSet"] = MnistNeuralNet.SigmoidMnistNeuralNet.s_fUseFullTestSet
+    dictT["fUseNarrowedWeightInit"] = MnistNeuralNet.SigmoidMnistNeuralNet.s_fUseNarrowedWeightInit
 
     return dictT
 
@@ -34,7 +35,13 @@ def StrCmdLineFromRd(rd):
     return "StrCmdLineFromRd"
 
 def StrRunNameFromRd(rd):
-    strName = "nN{}.cE{}.cM{}.l2{}.".format(rd.dictArgs["lstcNeuronsPL"], rd.dictArgs["cEpochs"], rd.dictArgs["citemsMiniBatch"], rd.dictArgs["l2"])
+    strName = "nN{}.cE{}.cM{}.l2{}.Full{}.Nar{}".format(
+                rd.dictArgs["lstcNeuronsPL"],
+                rd.dictArgs["cEpochs"],
+                rd.dictArgs["citemsMiniBatch"],
+                rd.dictArgs["l2"],
+                rd.dictArgs["fUseFullTestSet"],
+                rd.dictArgs["fUseNarrowedWeightInit"])
     return strName
 
 def RrInitFromRd(rd, iterT):
@@ -57,7 +64,7 @@ def SmnnFromRd(rd):
 
 
 def StrResultFromRrRd(rr, rd):
-    strOut = "{0}, {1}, {2}, {3:0.5f}, {4}, {5}, {6}, {7}, {8:0.5f}, {9}\n".format(
+    strOut = "{0};{1};{2};{3:0.5f};{4};{5};{6};{7};{8:0.5f};{9};{10}\n".format(
                 rr.strCmdLine,
                 rr.strRunName,
                 rr.iterN,
@@ -67,7 +74,8 @@ def StrResultFromRrRd(rr, rd):
                 rd.dictArgs["cEpochs"],
                 rd.dictArgs["citemsMiniBatch"],
                 rd.dictArgs["l2"],
-                rd.dictArgs["fUseFullTestSet"])
+                rd.dictArgs["fUseFullTestSet"],
+                rd.dictArgs["fUseNarrowedWeightInit"])
 
     return strOut
 
@@ -104,26 +112,25 @@ lstRd = list()
 # Setup RunDesc
 #
 
-lstlstNeuron = [[30], [100], [100, 20], [100, 50], [100, 100], [100, 100, 100]]
-lstEpochs = [1000, 2000, 5000, 10000]
-lstMiniBatches = [100, 200, 500]
-# lstlstNeuron = [[30]]
-# lstEpochs = [100]
-# lstMiniBatches = [50]
-for lstNeuronPL, cEpochs, citemsMiniBatch in itertools.product(lstlstNeuron, lstEpochs, lstMiniBatches):
+lstlstNeuron = [[100, 100, 100]]
+lstEpochs = [2000]
+lstMiniBatches = [100]
+lstfUseNarrowedWeightInit = (True, False)
+for fUseNarrowedWeightInit, lstNeuronPL, cEpochs, citemsMiniBatch in itertools.product(lstfUseNarrowedWeightInit, lstlstNeuron, lstEpochs, lstMiniBatches):
     rd = RunDesc()
     rd.dictArgs = DictArgsDefCreate()
     rd.dictArgs["fUseFullTestSet"] = True
     rd.dictArgs["cEpochs"] = cEpochs
     rd.dictArgs["citemsMiniBatch"] = citemsMiniBatch
     rd.dictArgs["lstcNeuronsPL"] = lstNeuronPL
+    rd.dictArgs["fUseNarrowedWeightInit"] = fUseNarrowedWeightInit 
 
     lstRd.append(rd)
 
 # Setup output file for logging while training
 strOutFile = "/tmp/mnistTrain.csv"
 fhLog = open(strOutFile, "w")
-strHeader = "CmdLine, RunName, Iter, Accuracy, Dmsec train, lstcNeuronsPL, cEpochs, miniBatch, l2, fUseFullTestSet\n"
+strHeader = "CmdLine;RunName;Iter;Accuracy;Dmsec train;lstcNeuronsPL;cEpochs;miniBatch;l2;fUseFullTestSet;fUseNarrowedWeightInit\n"
 fhLog.write(strHeader)
 
 #
